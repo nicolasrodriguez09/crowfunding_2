@@ -184,7 +184,7 @@
                                     </div>
                                     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-300">
                                         <span class="text-emerald-200 font-semibold">USD {{ number_format($solicitud->monto_solicitado, 2) }}</span>
-                                        <a href="#formulario-solicitud" class="text-emerald-300 underline">Revisar solicitud</a>
+                                        <a href="{{ route('creador.fondos.solicitudes.show', $solicitud) }}" class="text-emerald-300 underline">Revisar solicitud</a>
                                     </div>
                                     <p class="text-xs text-zinc-400">Descripción: {{ $solicitud->descripcion ?? 'Sin descripción' }}</p>
                                 </div>

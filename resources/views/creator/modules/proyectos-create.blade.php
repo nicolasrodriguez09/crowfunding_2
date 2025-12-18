@@ -34,20 +34,20 @@
             <form id="proyecto-form" method="POST" action="{{ route('creador.proyectos.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2">
                 @csrf
                 <div class="md:col-span-2">
-                    <label class="text-sm text-zinc-300">Titulo</label>
+                    <label class="text-sm text-zinc-300">Titulo *</label>
                     <input name="titulo" value="{{ old('titulo') }}" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Nombre de tu proyecto">
                 </div>
                 <div class="md:col-span-2">
-                    <label class="text-sm text-zinc-300">Descripcion</label>
-                    <textarea name="descripcion_proyecto" rows="3" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Describe el problema, la solucion y el impacto">{{ old('descripcion_proyecto') }}</textarea>
+                    <label class="text-sm text-zinc-300">Descripcion *</label>
+                    <textarea name="descripcion_proyecto" rows="3" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Describe el problema, la solucion y el impacto">{{ old('descripcion_proyecto') }}</textarea>
                 </div>
                 <div>
-                    <label class="text-sm text-zinc-300">Meta de financiacion (USD)</label>
-                    <input type="number" step="0.01" min="0" name="meta_financiacion" value="{{ old('meta_financiacion') }}" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="10000">
+                    <label class="text-sm text-zinc-300">Meta de financiacion (USD) *</label>
+                    <input type="number" step="0.01" min="1" name="meta_financiacion" value="{{ old('meta_financiacion') }}" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="10000">
                 </div>
                 <div>
-                    <label class="text-sm text-zinc-300">Modelo de financiamiento</label>
-                    <select name="modelo_financiamiento_id" class="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white focus:border-emerald-400 focus:ring-emerald-400">
+                    <label class="text-sm text-zinc-300">Modelo de financiamiento *</label>
+                    <select name="modelo_financiamiento_id" required class="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white focus:border-emerald-400 focus:ring-emerald-400">
                         <option value="">Selecciona un modelo</option>
                         @foreach ($modelos as $modelo)
                             <option value="{{ $modelo->id }}" @selected(old('modelo_financiamiento_id') == $modelo->id)>{{ $modelo->nombre }}</option>
@@ -55,8 +55,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm text-zinc-300">Categoria</label>
-                    <select name="categoria_id" class="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white focus:border-emerald-400 focus:ring-emerald-400">
+                    <label class="text-sm text-zinc-300">Categoria *</label>
+                    <select name="categoria_id" required class="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white focus:border-emerald-400 focus:ring-emerald-400">
                         <option value="">Selecciona una categoria</option>
                         @foreach ($categorias as $categoria)
                             <option value="{{ $categoria->id }}" @selected(old('categoria_id') == $categoria->id)>{{ $categoria->nombre }}</option>
@@ -64,12 +64,12 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm text-zinc-300">Ubicacion</label>
-                    <input name="ubicacion_geografica" value="{{ old('ubicacion_geografica') }}" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Ciudad, pais">
+                    <label class="text-sm text-zinc-300">Ubicacion *</label>
+                    <input name="ubicacion_geografica" value="{{ old('ubicacion_geografica') }}" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Ciudad, pais">
                 </div>
                 <div>
-                    <label class="text-sm text-zinc-300">Fecha limite</label>
-                    <input type="date" name="fecha_limite" value="{{ old('fecha_limite') }}" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400">
+                    <label class="text-sm text-zinc-300">Fecha limite *</label>
+                    <input type="date" name="fecha_limite" value="{{ old('fecha_limite') }}" required class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400">
                 </div>
                 <div class="md:col-span-2 space-y-3 rounded-2xl border border-white/10 bg-black/40 p-4">
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -99,7 +99,10 @@
                         <label class="text-xs text-zinc-400">Descripción breve</label>
                         <textarea id="cronograma-descripcion" rows="2" class="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Entregables, alcance, dependencias"></textarea>
                     </div>
-                    <input type="hidden" name="cronograma" id="cronograma-input" value="{{ old('cronograma') }}">
+                    <input type="hidden" name="cronograma" id="cronograma-input" value="{{ old('cronograma') }}" required>
+                    @error('cronograma')
+                        <p class="text-xs text-red-300">{{ $message }}</p>
+                    @enderror
                     <div id="cronograma-lista" class="space-y-2 text-sm text-zinc-200">
                         <p class="text-xs text-zinc-500">Aún no hay hitos agregados.</p>
                     </div>
@@ -119,7 +122,7 @@
                             </div>
                         </div>
                         <p class="text-[12px] text-emerald-200/70">JPG, PNG o WEBP. Máx. 8MB.</p>
-                        <input id="portada" type="file" name="portada" accept="image/*" class="hidden">
+                        <input id="portada" type="file" name="portada" accept="image/*" class="hidden" required>
                     </label>
                 </div>
                 <div class="md:col-span-2 flex justify-end">
@@ -205,6 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const fecha = fFecha?.value;
             const monto = fMonto?.value;
             const descripcion = fDesc?.value?.trim();
+            if (!titulo || !fecha || !monto) {
+                alert('Completa título, fecha y monto antes de agregar el hito.');
+                return;
+            }
             counter = cronograma.length ? Math.max(counter, cronograma.length) : counter;
             counter += 1;
             cronograma.push({
@@ -238,10 +245,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sincroniza antes de enviar el formulario
     const form = document.getElementById('proyecto-form');
     if (form) {
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', (e) => {
+            if (!cronograma.length) {
+                e.preventDefault();
+                alert('Agrega al menos un hito al cronograma antes de publicar.');
+                return false;
+            }
             if (cronogramaInput) cronogramaInput.value = JSON.stringify(cronograma);
         });
     }
 });
 </script>
 @endpush
+
+

@@ -92,6 +92,9 @@ Route::get('/admin/finanzas/export/recaudacion-categoria', [\App\Http\Controller
 Route::get('/admin/proveedores', [\App\Http\Controllers\AdminController::class, 'proveedores'])
     ->middleware(['auth','role:ADMIN'])
     ->name('admin.proveedores');
+Route::get('/admin/proveedores/{proveedor}', [\App\Http\Controllers\AdminController::class, 'showProveedor'])
+    ->middleware(['auth','role:ADMIN'])
+    ->name('admin.proveedores.show');
 
 Route::get('/admin/reportes', [\App\Http\Controllers\AdminController::class, 'reportesSospechosos'])
     ->middleware(['auth','role:ADMIN'])
@@ -215,6 +218,9 @@ Route::get('/creator/fondos', [\App\Http\Controllers\CreatorController::class, '
 Route::get('/creator/fondos/historial', [\App\Http\Controllers\CreatorController::class, 'fondosHistorial'])
     ->middleware(['auth','role:CREADOR'])
     ->name('creador.fondos.historial');
+Route::get('/creator/fondos/solicitudes/{solicitud}', [\App\Http\Controllers\CreatorController::class, 'showSolicitud'])
+    ->middleware(['auth','role:CREADOR'])
+    ->name('creador.fondos.solicitudes.show');
 Route::post('/creator/proyectos/{proyecto}/fondos/solicitudes', [\App\Http\Controllers\CreatorController::class, 'storeSolicitudDesembolso'])
     ->middleware(['auth','role:CREADOR'])
     ->name('creador.fondos.solicitudes.store');
@@ -245,6 +251,9 @@ Route::get('/creator/perfil/verificacion', [\App\Http\Controllers\CreatorControl
 Route::get('/creator/reportes', [\App\Http\Controllers\CreatorController::class, 'reportes'])
     ->middleware(['auth','role:CREADOR'])
     ->name('creador.reportes');
+Route::get('/creator/reportes/pagos/{pago}', [\App\Http\Controllers\CreatorController::class, 'showPago'])
+    ->middleware(['auth','role:CREADOR'])
+    ->name('creador.reportes.pagos.show');
 Route::post('/creator/proyectos/{proyecto}/reportes/pagos', [\App\Http\Controllers\CreatorController::class, 'storePago'])
     ->middleware(['auth','role:CREADOR'])
     ->name('creador.reportes.pagos.store');

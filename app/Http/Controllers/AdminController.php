@@ -9,6 +9,7 @@ use App\Models\SolicitudDesembolso;
 use App\Models\Pago;
 use App\Models\User;
 use App\Models\Proveedor;
+use App\Models\ActualizacionProyecto;
 use App\Models\VerificacionSolicitud;
 use App\Models\ProyectoCategoria;
 use App\Models\ProyectoModeloFinanciamiento;
@@ -328,9 +329,10 @@ class AdminController extends Controller
         $pendiente = $solicitudes->where('estado', 'pendiente')->sum('monto_solicitado');
         $retenido = max($totalRecaudado - $fondosLiberados, 0);
         $fondosGastados = Pago::whereHas('solicitud', fn($q) => $q->where('proyecto_id', $proyecto->id))->sum('monto');
+        $desembolsosTotal = $solicitudes->count();
 
         $reportesSospechosos = ReporteSospechoso::where('proyecto_id', $proyecto->id);
-        $reportesAbiertos = (clone $reportesSospechosos)->where('estado', 'pendiente')->count();
+        $reportesAbiertos = (clone $reportesSospechosos)->where('estado', '<>', 'pendiente')->count();
         $reportesTotales = $reportesSospechosos->count();
         $pagosObservados = Pago::whereHas('solicitud', fn($q) => $q->where('proyecto_id', $proyecto->id))
             ->whereIn('estado_auditoria', ['observado', 'rechazado'])
@@ -347,6 +349,18 @@ class AdminController extends Controller
             ->latest('fecha_pago')
             ->take(5)
             ->get();
+        $pagosTotal = Pago::whereHas('solicitud', fn($q) => $q->where('proyecto_id', $proyecto->id))->count();
+
+        $cronograma = collect($proyecto->cronograma ?? [])
+            ->filter(fn($h) => is_array($h))
+            ->values();
+        $hitosCumplidos = ActualizacionProyecto::where('proyecto_id', $proyecto->id)
+            ->where('es_hito', true)
+            ->count();
+        $planificados = $cronograma->count();
+        $progresoHitos = $planificados > 0
+            ? min(100, (int) round(($hitosCumplidos / $planificados) * 100))
+            : ($hitosCumplidos > 0 ? 100 : 0);
 
         return view('admin.modules.proyectos-show', [
             'proyecto' => $proyecto,
@@ -367,6 +381,12 @@ class AdminController extends Controller
             ],
             'desembolsosRecientes' => $desembolsosRecientes,
             'pagosRecientes' => $pagosRecientes,
+            'aportacionesTotal' => $stats['aportaciones'],
+            'desembolsosTotal' => $desembolsosTotal,
+            'pagosTotal' => $pagosTotal,
+            'hitosCumplidos' => $hitosCumplidos,
+            'planificados' => $planificados,
+            'progresoHitos' => $progresoHitos,
         ]);
     }
 
@@ -606,8 +626,6 @@ class AdminController extends Controller
     public function proveedores(): View
     {
         $search = request()->query('q');
-        $proyectoFiltro = request()->query('proyecto');
-        $creadorFiltro = request()->query('creador');
 
         $proyectos = Proyecto::orderBy('titulo')->get(['id','titulo','creador_id']);
         $creadores = User::orderBy('name')->get(['id','name','nombre_completo']);
@@ -624,14 +642,6 @@ class AdminController extends Controller
             });
         }
 
-        if ($proyectoFiltro) {
-            $proveedoresQuery->where('proyecto_id', $proyectoFiltro);
-        }
-
-        if ($creadorFiltro) {
-            $proveedoresQuery->where('creador_id', $creadorFiltro);
-        }
-
         $proveedores = $proveedoresQuery->paginate(12)->withQueryString();
         $stats = [
             'total' => Proveedor::count(),
@@ -639,7 +649,42 @@ class AdminController extends Controller
             'calificacionPromedio' => round((float) \App\Models\ProveedorHistorial::avg('calificacion'), 2),
         ];
 
-        return view('admin.modules.proveedores', compact('proveedores', 'proyectos', 'creadores', 'search', 'proyectoFiltro', 'creadorFiltro', 'stats'));
+        return view('admin.modules.proveedores', compact('proveedores', 'proyectos', 'creadores', 'search', 'stats'));
+    }
+
+    public function showProveedor(Proveedor $proveedor): View
+    {
+        $proveedor->load([
+            'proyecto',
+            'creador',
+            'historiales' => fn($q) => $q->orderByDesc('fecha_entrega')->orderByDesc('created_at'),
+        ]);
+
+        $calificacionPromedio = $proveedor->historiales()
+            ->whereNotNull('calificacion')
+            ->avg('calificacion');
+
+        $pagos = Pago::with(['solicitud.proyecto'])
+            ->where('proveedor_id', $proveedor->id)
+            ->orderByDesc('fecha_pago')
+            ->orderByDesc('id')
+            ->get();
+
+        $pagoStats = [
+            'total' => $pagos->sum('monto'),
+            'count' => $pagos->count(),
+            'conAdjuntos' => $pagos->filter(fn ($p) => !empty($p->adjuntos))->count(),
+            'pendientes' => $pagos->where('estado_auditoria', 'pendiente')->count(),
+            'aprobados' => $pagos->where('estado_auditoria', 'aprobado')->count(),
+            'observados' => $pagos->whereIn('estado_auditoria', ['observado', 'rechazado'])->count(),
+        ];
+
+        return view('admin.modules.proveedores-show', compact(
+            'proveedor',
+            'calificacionPromedio',
+            'pagos',
+            'pagoStats'
+        ));
     }
 
 

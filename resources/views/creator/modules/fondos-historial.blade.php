@@ -43,34 +43,46 @@
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Historial</p>
                     <h3 class="text-lg font-bold text-white">Solicitudes del proyecto</h3>
-                    <p class="text-sm text-zinc-400">Incluye monto, hito, estado, fecha y adjuntos enviados.</p>
+                    <p class="text-sm text-zinc-400">Incluye monto, hito, estado, auditoría y adjuntos.</p>
                 </div>
                 <span class="rounded-full bg-white/5 px-3 py-1 text-[11px] font-semibold text-zinc-200">Total: {{ $solicitudes->count() }}</span>
             </div>
 
             <div class="space-y-3">
+                @php
+                    $estadoBadges = [
+                        'pendiente' => 'bg-amber-500/15 text-amber-100 border border-amber-400/30',
+                        'aprobado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
+                        'liberado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
+                        'pagado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
+                        'rechazado' => 'bg-red-500/15 text-red-100 border border-red-400/30',
+                        'gastado' => 'bg-sky-500/15 text-sky-100 border border-sky-400/30',
+                    ];
+                @endphp
                 @forelse ($solicitudes as $solicitud)
                     @php
-                        $map = [
-                            'pendiente' => 'bg-amber-500/15 text-amber-100 border border-amber-400/30',
-                            'aprobado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
-                            'liberado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
-                            'pagado' => 'bg-emerald-500/15 text-emerald-100 border border-emerald-400/30',
-                            'rechazado' => 'bg-red-500/15 text-red-100 border border-red-400/30',
-                            'gastado' => 'bg-sky-500/15 text-sky-100 border border-sky-400/30',
-                        ];
-                        $badge = $map[$solicitud->estado] ?? 'bg-white/10 text-white border border-white/20';
+                        $badge = $estadoBadges[$solicitud->estado] ?? 'bg-white/10 text-white border border-white/20';
+                        $badgeAdmin = $solicitud->estado_admin ? ($estadoBadges[$solicitud->estado_admin] ?? 'bg-white/10 text-white border border-white/20') : null;
                     @endphp
-                    <article class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner ring-1 ring-indigo-500/10 space-y-2">
+                    <article class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner ring-1 ring-indigo-500/10 space-y-3">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="text-sm font-semibold text-white">{{ $solicitud->hito ?? 'Hito no asignado' }}</p>
                                 <p class="text-xs text-zinc-400">{{ $solicitud->created_at?->format('d/m/Y H:i') }} - Fecha estimada: {{ $solicitud->fecha_estimada?->format('d/m/Y') ?? 'Sin fecha' }}</p>
                                 <p class="text-sm text-zinc-200">Monto: USD {{ number_format($solicitud->monto_solicitado, 2) }}</p>
+                                <p class="text-xs text-zinc-500">Desembolso: {{ $solicitud->monto_solicitado ? 'USD '.number_format($solicitud->monto_solicitado, 2) : 'Sin monto' }}</p>
                             </div>
-                            <span class="rounded-full px-3 py-1 text-[11px] font-semibold {{ $badge }}">{{ ucfirst($solicitud->estado) }}</span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="rounded-full px-3 py-1 text-[11px] font-semibold {{ $badge }}">{{ ucfirst($solicitud->estado) }}</span>
+                                @if($badgeAdmin)
+                                    <span class="rounded-full px-3 py-1 text-[11px] font-semibold {{ $badgeAdmin }}">Auditoría: {{ ucfirst($solicitud->estado_admin) }}</span>
+                                @endif
+                            </div>
                         </div>
                         <p class="text-sm text-zinc-300">{{ $solicitud->descripcion ?? 'Sin descripcion' }}</p>
+                        @if($solicitud->justificacion_admin)
+                            <p class="text-xs text-red-200">Nota auditoría: {{ $solicitud->justificacion_admin }}</p>
+                        @endif
                         <div class="text-xs text-zinc-400">
                             <p class="font-semibold text-white">Proveedores:</p>
                             <p>{{ !empty($solicitud->proveedores) ? implode(', ', $solicitud->proveedores) : 'Sin proveedores especificados' }}</p>

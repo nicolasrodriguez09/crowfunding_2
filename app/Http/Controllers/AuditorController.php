@@ -7,6 +7,7 @@ use App\Models\SolicitudDesembolso;
 use App\Models\Pago;
 use App\Models\VerificacionSolicitud;
 use App\Models\Proyecto;
+use App\Models\ProyectoCategoria;
 use App\Models\ActualizacionProyecto;
 use App\Models\ReporteSospechoso;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,7 @@ class AuditorController extends Controller
             'solicitudes_aprobadas' => SolicitudDesembolso::whereIn('estado', ['aprobado', 'liberado', 'pagado', 'gastado'])->count(),
             'pagos_registrados' => Pago::count(),
             'kyc_pendientes' => VerificacionSolicitud::where('estado', 'pendiente')->count(),
+            'reportes_pendientes' => ReporteSospechoso::where('estado', 'pendiente')->count(),
         ];
 
         $solicitudesPendientes = SolicitudDesembolso::with('proyecto')
@@ -41,6 +43,12 @@ class AuditorController extends Controller
             ->take(5)
             ->get();
 
+        $reportesPendientes = ReporteSospechoso::with('proyecto')
+            ->where('estado', 'pendiente')
+            ->orderByDesc('created_at')
+            ->take(5)
+            ->get();
+
         $proyectosActivos = Proyecto::orderByDesc('created_at')
             ->take(5)
             ->get();
@@ -50,6 +58,7 @@ class AuditorController extends Controller
             'solicitudesPendientes',
             'pagosRecientes',
             'verificacionesPendientes',
+            'reportesPendientes',
             'proyectosActivos'
         ));
     }
@@ -245,16 +254,49 @@ class AuditorController extends Controller
     public function hitos()
     {
         $q = request()->query('q');
+        $categoria = request()->query('categoria');
 
         $proyectos = Proyecto::withCount(['hitos' => function ($q2) {
                 $q2->where('es_hito', true);
             }])
             ->when($q, fn($query) => $query->where('titulo', 'like', "%{$q}%"))
+            ->when($categoria, fn($query) => $query->where('categoria', $categoria))
             ->orderBy('titulo')
             ->paginate(12)
             ->withQueryString();
 
-        return view('auditor.modules.hitos', compact('proyectos', 'q'));
+        $categorias = ProyectoCategoria::orderBy('nombre')->pluck('nombre')
+            ->merge(Proyecto::select('categoria')->distinct()->pluck('categoria'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $proyectos->getCollection()->transform(function (Proyecto $proyecto) {
+            $portadaUrl = null;
+            if ($proyecto->imagen_portada) {
+                $normalized = ltrim(preg_replace('/^public\\//', '', $proyecto->imagen_portada), '/');
+                if (Storage::disk('public')->exists($normalized)) {
+                    $portadaUrl = asset('storage/' . $normalized);
+                } elseif (file_exists(public_path($proyecto->imagen_portada))) {
+                    $portadaUrl = asset($proyecto->imagen_portada);
+                }
+            }
+
+            $cronograma = collect($proyecto->cronograma ?? [])->filter(fn($h) => is_array($h))->values();
+            $planificados = $cronograma->count();
+            $reportados = (int) ($proyecto->hitos_count ?? 0);
+            $basePlan = $planificados ?: max($reportados, 1);
+            $progresoHitos = $basePlan ? min(100, (int) round(($reportados / $basePlan) * 100)) : 0;
+
+            $proyecto->portada_url = $portadaUrl;
+            $proyecto->cronograma_planificados = $planificados;
+            $proyecto->hitos_reportados = $reportados;
+            $proyecto->progreso_hitos = $progresoHitos;
+
+            return $proyecto;
+        });
+
+        return view('auditor.modules.hitos', compact('proyectos', 'q', 'categoria', 'categorias'));
     }
 
     public function hitosProyecto(Request $request, Proyecto $proyecto)
@@ -305,7 +347,11 @@ class AuditorController extends Controller
             }
         }
 
-        return view('auditor.modules.proyectos-show', compact('proyecto', 'portadaUrl'));
+        $cronograma = collect($proyecto->cronograma ?? [])
+            ->filter(fn($h) => is_array($h))
+            ->values();
+
+        return view('auditor.modules.proyectos-show', compact('proyecto', 'portadaUrl', 'cronograma'));
     }
 
     public function updateProyectoPublicacion(Request $request, Proyecto $proyecto)

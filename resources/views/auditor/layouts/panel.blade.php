@@ -135,5 +135,7 @@
             enableStreaming: false,
         });
     </script>
+
+    @stack('scripts')
 </body>
 </html>

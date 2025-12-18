@@ -124,8 +124,8 @@
                     @endphp
                     @forelse ($pagos as $pago)
                         @php
-                            $estado = $pago->solicitud->estado ?? 'pendiente';
-                            $badge = $estadoBadges[$estado] ?? 'bg-white/10 text-white border border-white/20';
+                            $estadoAuditoria = $pago->estado_auditoria ?? 'pendiente';
+                            $badgeAuditoria = $estadoBadges[$estadoAuditoria] ?? 'bg-white/10 text-white border border-white/20';
                         @endphp
                         <article class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner space-y-3">
                             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -133,7 +133,7 @@
                                     <p class="text-sm font-semibold text-white">{{ $pago->concepto ?? 'Pago a proveedor' }}</p>
                                     <p class="text-xs text-zinc-400">{{ $pago->fecha_pago?->format('d/m/Y') ?? 'Fecha pendiente' }} · Proveedor: {{ $pago->proveedor->nombre_proveedor ?? 'N/D' }}</p>
                                 </div>
-                                <span class="rounded-full px-3 py-1 text-[11px] font-semibold {{ $badge }}">{{ ucfirst($estado) }}</span>
+                                <span class="rounded-full px-3 py-1 text-[11px] font-semibold {{ $badgeAuditoria }}">Auditoría: {{ ucfirst($estadoAuditoria) }}</span>
                             </div>
                             <div class="text-sm text-zinc-200">
                                 <p>Monto: USD {{ number_format($pago->monto, 2) }} · Hito: {{ $pago->solicitud->hito ?? 'Sin hito' }}</p>
@@ -150,7 +150,7 @@
                                 @else
                                     <span class="text-zinc-500">Sin adjuntos</span>
                                 @endif
-                                <a href="{{ route('creador.fondos.historial', ['proyecto' => $selectedProjectId]) }}" class="ml-auto text-emerald-300 underline">Ver detalle</a>
+                                <a href="{{ route('creador.reportes.pagos.show', $pago) }}" class="ml-auto text-emerald-300 underline">Ver detalle</a>
                             </div>
                         </article>
                     @empty

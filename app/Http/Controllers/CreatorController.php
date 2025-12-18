@@ -17,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class CreatorController extends Controller
@@ -519,22 +520,99 @@ class CreatorController extends Controller
         return view('creator.modules.reportes', compact('proyectos', 'selectedProjectId', 'pagos', 'solicitudes', 'proveedores', 'resumen'));
     }
 
+    public function showPago(Pago $pago): View
+    {
+        $pago->load(['proveedor', 'solicitud.proyecto']);
+
+        abort_unless(optional($pago->solicitud->proyecto)->creador_id === auth()->id(), 403);
+
+        $proyecto = $pago->solicitud->proyecto;
+        $adjuntos = collect($pago->adjuntos ?? [])
+            ->filter()
+            ->map(function ($path) {
+                if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+                    return ['path' => $path, 'url' => $path];
+                }
+
+                $normalized = ltrim(preg_replace('/^public\\//', '', $path), '/');
+
+                if (Storage::disk('public')->exists($normalized)) {
+                    return ['path' => $path, 'url' => asset('storage/' . $normalized)];
+                }
+
+                if (file_exists(public_path('storage/' . $normalized))) {
+                    return ['path' => $path, 'url' => asset('storage/' . $normalized)];
+                }
+
+                if (file_exists(public_path($path))) {
+                    return ['path' => $path, 'url' => asset($path)];
+                }
+
+                return ['path' => $path, 'url' => Storage::url($path)];
+            });
+
+        return view('creator.modules.reportes-show', compact('pago', 'proyecto', 'adjuntos'));
+    }
+
+    public function showSolicitud(SolicitudDesembolso $solicitud): View
+    {
+        $solicitud->load('proyecto');
+        abort_unless(optional($solicitud->proyecto)->creador_id === auth()->id(), 403);
+
+        $proyecto = $solicitud->proyecto;
+        $adjuntos = collect($solicitud->adjuntos ?? [])
+            ->filter()
+            ->map(function ($path) {
+                if (Str::startsWith($path, ['http://', 'https://', '//'])) {
+                    return ['path' => $path, 'url' => $path];
+                }
+
+                $normalized = ltrim(preg_replace('/^public\\//', '', $path), '/');
+
+                if (Storage::disk('public')->exists($normalized)) {
+                    return ['path' => $path, 'url' => asset('storage/' . $normalized)];
+                }
+
+                if (file_exists(public_path('storage/' . $normalized))) {
+                    return ['path' => $path, 'url' => asset('storage/' . $normalized)];
+                }
+
+                if (file_exists(public_path($path))) {
+                    return ['path' => $path, 'url' => asset($path)];
+                }
+
+                return ['path' => $path, 'url' => Storage::url($path)];
+            });
+
+        return view('creator.modules.fondos-solicitud-show', compact('solicitud', 'proyecto', 'adjuntos'));
+    }
+
     public function storeProyecto(Request $request): RedirectResponse
     {
         $this->ensureCreatorVerified();
 
         $validated = $request->validate([
             'titulo' => ['required', 'string', 'max:255'],
-            'descripcion_proyecto' => ['nullable', 'string'],
-            'meta_financiacion' => ['required', 'numeric', 'min:0'],
-            'modelo_financiamiento_id' => ['nullable', 'exists:proyecto_modelos_financiamiento,id'],
-            'categoria_id' => ['nullable', 'exists:proyecto_categorias,id'],
-            'ubicacion_geografica' => ['nullable', 'string', 'max:120'],
-            'fecha_limite' => ['nullable', 'date'],
-            'cronograma' => ['nullable', 'string'],
+            'descripcion_proyecto' => ['required', 'string'],
+            'meta_financiacion' => ['required', 'numeric', 'min:1'],
+            'modelo_financiamiento_id' => ['required', 'exists:proyecto_modelos_financiamiento,id'],
+            'categoria_id' => ['required', 'exists:proyecto_categorias,id'],
+            'ubicacion_geografica' => ['required', 'string', 'max:120'],
+            'fecha_limite' => ['required', 'date'],
+            'cronograma' => ['required', 'string', function ($attribute, $value, $fail) {
+                $decoded = json_decode($value, true);
+                if (!is_array($decoded) || empty($decoded)) {
+                    $fail('Agrega al menos un hito al cronograma.');
+                }
+            }],
             'presupuesto' => ['nullable', 'string'],
-            'portada' => ['nullable', 'image', 'max:8192'],
+            'portada' => ['required', 'image', 'max:8192'],
         ]);
+
+        $cronogramaDecoded = $this->decodeJson($validated['cronograma'] ?? null);
+        if (empty($cronogramaDecoded) || !is_array($cronogramaDecoded)) {
+            return redirect()->back()->withErrors(['cronograma' => 'Agrega al menos un hito al cronograma.'])->withInput();
+        }
 
         $path = null;
         if ($request->hasFile('portada')) {
@@ -549,7 +627,7 @@ class CreatorController extends Controller
             'categoria' => $this->resolveCategoriaNombre($request->input('categoria_id')),
             'ubicacion_geografica' => $validated['ubicacion_geografica'] ?? null,
             'fecha_limite' => $validated['fecha_limite'] ?? null,
-            'cronograma' => $this->decodeJson($validated['cronograma'] ?? null),
+            'cronograma' => $cronogramaDecoded,
             'presupuesto' => $this->decodeJson($validated['presupuesto'] ?? null),
             'creador_id' => $request->user()->id,
             'estado' => 'borrador',

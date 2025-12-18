@@ -390,6 +390,20 @@ class AdminController extends Controller
         ]);
     }
 
+    public function updateProyectoPublicacion(Request $request, Proyecto $proyecto): RedirectResponse
+    {
+        $validated = $request->validate([
+            'accion' => ['required', 'in:permitir,pausar'],
+        ]);
+
+        $proyecto->estado = $validated['accion'] === 'permitir' ? 'publicado' : 'pausado';
+        $proyecto->save();
+
+        return redirect()
+            ->route('admin.proyectos.show', $proyecto)
+            ->with('status', "Proyecto {$proyecto->estado}.");
+    }
+
     public function proyectoGastos(Proyecto $proyecto): View
     {
         $proyecto->load('creador');
@@ -561,7 +575,8 @@ class AdminController extends Controller
 
         if ($q) {
             $reportesQuery->where(function ($sub) use ($q) {
-                $sub->whereHas('proyecto', fn ($inner) => $inner->where('titulo', 'like', "%{$q}%"))
+                $sub->where('id', $q)
+                    ->orWhereHas('proyecto', fn ($inner) => $inner->where('titulo', 'like', "%{$q}%"))
                     ->orWhereHas('colaborador', fn ($inner) => $inner->where('nombre_completo', 'like', "%{$q}%")
                         ->orWhere('name', 'like', "%{$q}%"))
                     ->orWhere('motivo', 'like', "%{$q}%");
@@ -925,5 +940,114 @@ class AdminController extends Controller
         }
 
         return array_merge($model->only(['id', 'created_at']), ['tipo' => $tipo]);
+    }
+
+    public function auditoriasActividad(Request $request): View
+    {
+        $q = $request->query('q');
+        $desde = $request->query('desde');
+        $hasta = $request->query('hasta');
+
+        $from = $desde ? Carbon::parse($desde)->startOfDay() : null;
+        $to = $hasta ? Carbon::parse($hasta)->endOfDay() : null;
+
+        $pagosQuery = Pago::with(['solicitud.proyecto', 'proveedor'])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        if ($from) {
+            $pagosQuery->where('updated_at', '>=', $from);
+        }
+        if ($to) {
+            $pagosQuery->where('updated_at', '<=', $to);
+        }
+        if ($q) {
+            $pagosQuery->where(function ($sub) use ($q) {
+                $sub->where('concepto', 'like', "%{$q}%")
+                    ->orWhereHas('proveedor', fn($p) => $p->where('nombre_proveedor', 'like', "%{$q}%"))
+                    ->orWhereHas('solicitud.proyecto', fn($p) => $p->where('titulo', 'like', "%{$q}%"));
+            });
+        }
+        $pagosEventos = $pagosQuery->take(200)->get()->map(function (Pago $pago) {
+            $proyecto = $pago->solicitud->proyecto->titulo ?? 'Proyecto';
+            $estado = ucfirst($pago->estado_auditoria ?? 'pendiente');
+            return [
+                'tipo' => 'pago',
+                'mensaje' => "Pago de US$ " . number_format($pago->monto, 2) . " en {$proyecto} marcado como {$estado}",
+                'timestamp' => optional($pago->updated_at ?? $pago->fecha_pago)->format('Y-m-d H:i'),
+                'link' => route('admin.gastos', ['q' => $pago->id]),
+            ];
+        });
+
+        $reportesQuery = ReporteSospechoso::with(['proyecto', 'colaborador'])
+            ->orderByDesc('updated_at');
+
+        if ($from) {
+            $reportesQuery->where('updated_at', '>=', $from);
+        }
+        if ($to) {
+            $reportesQuery->where('updated_at', '<=', $to);
+        }
+        if ($q) {
+            $reportesQuery->where(function ($sub) use ($q) {
+                $sub->where('motivo', 'like', "%{$q}%")
+                    ->orWhereHas('proyecto', fn($p) => $p->where('titulo', 'like', "%{$q}%"))
+                    ->orWhereHas('colaborador', fn($p) => $p->where('nombre_completo', 'like', "%{$q}%")
+                        ->orWhere('name', 'like', "%{$q}%"));
+            });
+        }
+        $reportesEventos = $reportesQuery->take(200)->get()->map(function (ReporteSospechoso $rep) {
+            $proyecto = $rep->proyecto->titulo ?? 'Proyecto';
+            $estado = ucfirst($rep->estado ?? 'pendiente');
+            return [
+                'tipo' => 'reporte',
+                'mensaje' => "Reporte #{$rep->id} en {$proyecto} ({$estado})",
+                'timestamp' => optional($rep->updated_at)->format('Y-m-d H:i'),
+                'link' => route('admin.reportes', ['q' => $rep->id]),
+            ];
+        });
+
+        $eventos = $pagosEventos->merge($reportesEventos)
+            ->filter(fn($e) => !empty($e['timestamp']))
+            ->sortByDesc('timestamp')
+            ->values();
+
+        return view('admin.modules.auditorias-actividad', compact('eventos', 'q', 'desde', 'hasta'));
+    }
+
+    public function gastos(Request $request): View
+    {
+        $estadoAuditoria = $request->query('estado_auditoria');
+        $q = $request->query('q');
+
+        $pagosQuery = Pago::with(['proveedor', 'solicitud.proyecto'])
+            ->orderByDesc('fecha_pago')
+            ->orderByDesc('id');
+
+        if ($estadoAuditoria) {
+            $pagosQuery->where('estado_auditoria', $estadoAuditoria);
+        }
+
+        if ($q) {
+            $pagosQuery->where(function ($sub) use ($q) {
+                $sub->where('concepto', 'like', "%{$q}%")
+                    ->orWhereHas('proveedor', fn($p) => $p->where('nombre_proveedor', 'like', "%{$q}%"))
+                    ->orWhereHas('solicitud.proyecto', fn($p) => $p->where('titulo', 'like', "%{$q}%"));
+            });
+        }
+
+        $pagos = $pagosQuery->paginate(15)->withQueryString();
+
+        $stats = [
+            'total' => Pago::count(),
+            'conAdjuntos' => Pago::whereNotNull('adjuntos')->count(),
+            'pendientes' => Pago::where('estado_auditoria', 'pendiente')->count(),
+            'aprobados' => Pago::where('estado_auditoria', 'aprobado')->count(),
+            'observados' => Pago::whereIn('estado_auditoria', ['observado', 'rechazado'])->count(),
+        ];
+
+        $estados = Pago::select('estado_auditoria')->distinct()->pluck('estado_auditoria')->filter()->values();
+
+        return view('admin.modules.gastos', compact('pagos', 'estadoAuditoria', 'q', 'stats', 'estados'));
     }
 }

@@ -43,6 +43,10 @@ Route::get('/admin/proyectos/{proyecto}/gastos', [\App\Http\Controllers\AdminCon
     ->middleware(['auth','role:ADMIN'])
     ->whereNumber('proyecto')
     ->name('admin.proyectos.gastos');
+Route::patch('/admin/proyectos/{proyecto}/publicacion', [\App\Http\Controllers\AdminController::class, 'updateProyectoPublicacion'])
+    ->middleware(['auth','role:ADMIN'])
+    ->whereNumber('proyecto')
+    ->name('admin.proyectos.publicacion');
 
 Route::get('/admin/proyectos/config', [\App\Http\Controllers\AdminController::class, 'proyectosConfig'])
     ->middleware(['auth','role:ADMIN'])
@@ -63,6 +67,9 @@ Route::delete('/admin/proyectos/modelos/{modelo}', [\App\Http\Controllers\AdminC
 Route::get('/admin/auditorias', [\App\Http\Controllers\AdminController::class, 'auditorias'])
     ->middleware(['auth','role:ADMIN'])
     ->name('admin.auditorias');
+Route::get('/admin/auditorias/actividad', [\App\Http\Controllers\AdminController::class, 'auditoriasActividad'])
+    ->middleware(['auth','role:ADMIN'])
+    ->name('admin.auditorias.actividad');
 
 Route::get('/admin/finanzas', [\App\Http\Controllers\AdminController::class, 'finanzas'])
     ->middleware(['auth','role:ADMIN'])
@@ -95,6 +102,9 @@ Route::get('/admin/proveedores', [\App\Http\Controllers\AdminController::class, 
 Route::get('/admin/proveedores/{proveedor}', [\App\Http\Controllers\AdminController::class, 'showProveedor'])
     ->middleware(['auth','role:ADMIN'])
     ->name('admin.proveedores.show');
+Route::get('/admin/gastos', [\App\Http\Controllers\AdminController::class, 'gastos'])
+    ->middleware(['auth','role:ADMIN'])
+    ->name('admin.gastos');
 
 Route::get('/admin/reportes', [\App\Http\Controllers\AdminController::class, 'reportesSospechosos'])
     ->middleware(['auth','role:ADMIN'])

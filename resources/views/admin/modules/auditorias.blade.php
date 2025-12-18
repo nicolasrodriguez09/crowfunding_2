@@ -8,27 +8,28 @@
         @php
             $resumenData = $resumen ?? [];
             $reportesAbiertos = $resumenData['reportes_abiertos'] ?? ($reportesPendientes->count() ?? 0);
+            $reportesTotales = $resumenData['reportes_totales'] ?? ($reportesAbiertos + ($resumenData['reportes_cerrados_30d'] ?? 0));
             $reportesCerrados30 = $resumenData['reportes_cerrados_30d'] ?? 0;
             $proyectosRevision = $proyectosRevision ?? collect();
             $incidenciasGraves = $resumenData['incidencias_graves'] ?? 0;
-                    $gastosValidados = $resumenData['gastos_validados'] ?? 0;
-                    $gastosTotales = $resumenData['gastos_totales'] ?? max(1, $gastosValidados);
-                    $porcentajeValidados = $gastosTotales > 0 ? round(($gastosValidados / $gastosTotales) * 100) : 0;
-                    $gastosConComprobante = $resumenData['gastos_con_comprobante'] ?? 0;
-                    $gastosSinComprobante = $resumenData['gastos_sin_comprobante'] ?? 0;
-                    $gastosEnRevision = $resumenData['gastos_en_revision'] ?? 0;
-                    $actividadTimeline = $actividadTimeline ?? [];
-                    $alertasRapidas = [];
+            $gastosValidados = $resumenData['gastos_validados'] ?? 0;
+            $gastosTotales = $resumenData['gastos_totales'] ?? max(1, $gastosValidados);
+            $porcentajeValidados = $gastosTotales > 0 ? round(($gastosValidados / $gastosTotales) * 100) : 0;
+            $gastosConComprobante = $resumenData['gastos_con_comprobante'] ?? 0;
+            $gastosSinComprobante = $resumenData['gastos_sin_comprobante'] ?? 0;
+            $gastosEnRevision = $resumenData['gastos_en_revision'] ?? 0;
+            $actividadTimeline = $actividadTimeline ?? [];
+            $alertasRapidas = [];
 
-                    if (($reportesPendientes ?? collect())->count() > 0) {
-                        $alertasRapidas[] = 'Hay ' . ($reportesPendientes->count() ?? 0) . ' reportes sospechosos abiertos';
-                    }
-                    if (($pagosObservados ?? collect())->count() > 0) {
-                        $alertasRapidas[] = 'Pagos observados/rechazados detectados en comprobantes';
-                    }
-                    if ($gastosSinComprobante > 0) {
-                        $alertasRapidas[] = $gastosSinComprobante . ' gastos sin comprobante';
-                    }
+            if (($reportesPendientes ?? collect())->count() > 0) {
+                $alertasRapidas[] = 'Hay ' . ($reportesPendientes->count() ?? 0) . ' reportes sospechosos abiertos';
+            }
+            if (($pagosObservados ?? collect())->count() > 0) {
+                $alertasRapidas[] = 'Pagos observados/rechazados detectados en comprobantes';
+            }
+            if ($gastosSinComprobante > 0) {
+                $alertasRapidas[] = $gastosSinComprobante . ' gastos sin comprobante';
+            }
             if ($incidenciasGraves > 0) {
                 $alertasRapidas[] = $incidenciasGraves . ' incidencias graves en auditoria';
             }
@@ -43,10 +44,10 @@
             <div class="px-6 py-6 grid gap-4 lg:grid-cols-4 md:grid-cols-2">
                 @php
                     $kpis = [
-                        ['label' => 'Reportes abiertos', 'value' => $reportesAbiertos, 'href' => route('auditor.reportes'), 'badge' => 'Riesgo'],
-                        ['label' => 'Cerrados 30d', 'value' => $reportesCerrados30, 'href' => route('auditor.reportes'), 'badge' => 'Velocidad'],
-                        ['label' => 'Proyectos en revision', 'value' => $proyectosRevision->count() ?? 0, 'href' => route('admin.proyectos'), 'badge' => 'Pipeline'],
-                        ['label' => '% gastos validados', 'value' => $porcentajeValidados . '%', 'href' => route('auditor.comprobantes'), 'badge' => 'Cumplimiento'],
+                        ['label' => 'Reportes abiertos', 'value' => $reportesAbiertos, 'href' => route('admin.reportes', ['estado' => 'pendiente']), 'badge' => 'Riesgo'],
+                        ['label' => 'Cerrados 30d', 'value' => $reportesCerrados30, 'href' => route('admin.reportes', ['estado' => 'aprobado']), 'badge' => 'Velocidad'],
+                        ['label' => 'Proyectos en revision', 'value' => $proyectosRevision->count() ?? 0, 'href' => route('admin.proyectos', ['estado' => 'borrador']), 'badge' => 'Pipeline'],
+                        ['label' => '% gastos validados', 'value' => $porcentajeValidados . '%', 'href' => route('admin.gastos', ['estado_auditoria' => 'aprobado']), 'badge' => 'Cumplimiento'],
                     ];
                 @endphp
                 @foreach ($kpis as $kpi)
@@ -71,7 +72,7 @@
                         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Estado de documentacion</p>
                         <h3 class="text-lg font-semibold text-white">Gastos y comprobantes</h3>
                     </div>
-                    <a href="{{ route('auditor.comprobantes') }}" class="admin-btn admin-btn-primary text-xs">Ver lista de gastos en revision</a>
+                    <a href="{{ route('admin.gastos', ['estado_auditoria' => 'pendiente']) }}" class="admin-btn admin-btn-primary text-xs">Ver lista de gastos en revision</a>
                 </div>
                 <div class="mt-4 grid gap-4 sm:grid-cols-3">
                     <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -108,7 +109,7 @@
                         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-400">Actividad reciente</p>
                         <h3 class="text-lg font-semibold text-white">Timeline</h3>
                     </div>
-                    <a href="{{ route('auditor.reportes') }}" class="text-xs text-indigo-200 underline">Ver mas</a>
+                    <a href="{{ route('admin.auditorias.actividad') }}" class="text-xs text-indigo-200 underline">Ver mas</a>
                 </div>
                 <div class="mt-4 space-y-4">
                     @forelse($actividadTimeline as $evento)
@@ -144,7 +145,7 @@
                 </div>
                 <div class="text-right">
                     <p class="text-xs uppercase tracking-[0.24em] text-zinc-400">Total en sistema</p>
-                    <p class="text-lg font-semibold text-white">{{ $resumenData['reportes_totales'] ?? ($reportesAbiertos + ($resumenData['reportes_cerrados_30d'] ?? 0)) }}</p>
+                    <p class="text-lg font-semibold text-white">{{ $reportesTotales }}</p>
                 </div>
             </div>
         </section>

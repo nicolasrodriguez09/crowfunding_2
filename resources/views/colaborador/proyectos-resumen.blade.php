@@ -30,9 +30,15 @@
                     <div class="rounded-xl border border-white/15 bg-black/30 px-4 py-3 text-sm text-indigo-100">
                         <p class="text-xs uppercase tracking-[0.2em] text-sky-200">Tu aporte acumulado</p>
                         <p class="text-2xl font-extrabold text-emerald-300">${{ number_format($aporteUsuario, 0, ',', '.') }}</p>
-                        <a href="{{ route('colaborador.proyectos.aportar', $proyecto) }}" class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-[12px] font-bold uppercase tracking-wide text-white shadow-[0_10px_28px_rgba(59,130,246,0.35)] hover:bg-sky-700 transition-colors mt-2">
-                            Apoyar ahora
-                        </a>
+                        @if ($proyecto->estado === 'pausado')
+                            <span class="inline-flex items-center gap-2 rounded-lg bg-zinc-700 px-3 py-2 text-[12px] font-bold uppercase tracking-wide text-zinc-300 mt-2 border border-white/15 cursor-not-allowed">
+                                Proyecto pausado
+                            </span>
+                        @else
+                            <a href="{{ route('colaborador.proyectos.aportar', $proyecto) }}" class="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-[12px] font-bold uppercase tracking-wide text-white shadow-[0_10px_28px_rgba(59,130,246,0.35)] hover:bg-sky-700 transition-colors mt-2">
+                                Apoyar ahora
+                            </a>
+                        @endif
                     </div>
                 </div>
 

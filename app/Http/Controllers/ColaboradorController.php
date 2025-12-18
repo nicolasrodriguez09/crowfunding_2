@@ -550,6 +550,12 @@ class ColaboradorController extends Controller
      */
     public function aportarProyecto(Proyecto $proyecto): View
     {
+        if ($proyecto->estado === 'pausado') {
+            return redirect()
+                ->route('colaborador.proyectos.resumen', $proyecto)
+                ->withErrors(['aporte' => 'Este proyecto está pausado y no admite aportes.']);
+        }
+
         $proyecto->load(['recompensas', 'creador']);
         return view('colaborador.proyectos-aportar', compact('proyecto'));
     }
@@ -559,6 +565,12 @@ class ColaboradorController extends Controller
      */
     public function storeAportacion(Request $request, Proyecto $proyecto, PaypalService $paypal): RedirectResponse
     {
+        if ($proyecto->estado === 'pausado') {
+            return redirect()
+                ->route('colaborador.proyectos.resumen', $proyecto)
+                ->withErrors(['aporte' => 'Este proyecto está pausado y no admite aportes.']);
+        }
+
         // En pruebas automatizadas, simula PayPal y no obliga al campo metodo
         if (app()->environment('testing') && !$request->has('metodo')) {
             $request->merge(['metodo' => 'paypal']);

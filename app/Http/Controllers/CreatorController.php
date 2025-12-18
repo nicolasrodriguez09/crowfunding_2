@@ -595,24 +595,24 @@ class CreatorController extends Controller
             'titulo' => ['required', 'string', 'max:255'],
             'descripcion_proyecto' => ['required', 'string'],
             'meta_financiacion' => ['required', 'numeric', 'min:1'],
-            'modelo_financiamiento_id' => ['required', 'exists:proyecto_modelos_financiamiento,id'],
-            'categoria_id' => ['required', 'exists:proyecto_categorias,id'],
-            'ubicacion_geografica' => ['required', 'string', 'max:120'],
-            'fecha_limite' => ['required', 'date'],
-            'cronograma' => ['required', 'string', function ($attribute, $value, $fail) {
+            'modelo_financiamiento_id' => ['nullable', 'exists:proyecto_modelos_financiamiento,id'],
+            'categoria_id' => ['nullable', 'exists:proyecto_categorias,id'],
+            'ubicacion_geografica' => ['nullable', 'string', 'max:120'],
+            'fecha_limite' => ['nullable', 'date'],
+            'cronograma' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                if (is_null($value) || $value === '') {
+                    return;
+                }
                 $decoded = json_decode($value, true);
                 if (!is_array($decoded) || empty($decoded)) {
                     $fail('Agrega al menos un hito al cronograma.');
                 }
             }],
             'presupuesto' => ['nullable', 'string'],
-            'portada' => ['required', 'image', 'max:8192'],
+            'portada' => ['nullable', 'image', 'max:8192'],
         ]);
 
-        $cronogramaDecoded = $this->decodeJson($validated['cronograma'] ?? null);
-        if (empty($cronogramaDecoded) || !is_array($cronogramaDecoded)) {
-            return redirect()->back()->withErrors(['cronograma' => 'Agrega al menos un hito al cronograma.'])->withInput();
-        }
+        $cronogramaDecoded = $this->decodeJson($validated['cronograma'] ?? null) ?? [];
 
         $path = null;
         if ($request->hasFile('portada')) {

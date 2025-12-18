@@ -136,7 +136,7 @@ jobs:
           script: |
             cd ${{ env.DEPLOY_PATH }}
             ln -sfn ${{ env.DEPLOY_PATH }}/public ${{ env.PUBLIC_HTML }}
-            php artisan storage:link
+            ln -sfn ${{ env.DEPLOY_PATH }}/storage/app/public ${{ env.DEPLOY_PATH }}/public/storage
             php artisan config:clear
             php artisan cache:clear
             php artisan config:cache
